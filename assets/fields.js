@@ -114,35 +114,54 @@
   }
 
   // ---------- Tax card ----------
+  // Cards differ in layout, so each line is first given a role by what it
+  // holds; the rest follow the card's order: trade name, taxpayer, address.
   function taxCard(doc) {
-    const lines = doc.lines.map((l) => ({ ...l, n: norm(l.text) }));
-    const body = lines.filter((l) => !/جمهوريه|وزاره|مصلحه|الماليه/.test(l.n));
-    const fields = [];
-    const officeLine = body.find((l) => /\//.test(l.text) && hasArabic(l.text));
+    const lines = doc.lines.map((l) => ({ ...l, n: norm(l.text), d: dates(l.digitText || l.text) }));
+    const header = (l) => /جمهوريه|وزاره|مصلحه|الماليه|الضرائب/.test(l.n);
+    const meta = (l) => /بدء|بدع|كود|النشاط\s*:/.test(l.n) || l.d.length > 0;
     const forms = /توصيه|تضامن|مسئوليه محدوده|مساهمه|شخص واحد|فرديه|فردي/;
     const formName = { توصيه: "توصية بسيطة", تضامن: "تضامن", "مسئوليه محدوده": "ذات مسئولية محدودة", مساهمه: "مساهمة", "شخص واحد": "شخص واحد", فرديه: "منشأة فردية", فردي: "منشأة فردية" };
-    const formLine = body.find((l) => forms.test(l.n));
-    fields.push(f("office", "المأمورية", officeLine && clean(officeLine.text.split("/")[0].replace(/[^ء-ي\s]/g, " ")), "check"));
+    const arabicOnly = (t) => clean(String(t).replace(/[^ء-ي\s]/g, " "));
+    const realLatin = (t) => (String(t).match(/[A-Za-z]{2,}/g) || []).filter((w) => w.length >= 4 && /[A-Z]/.test(w));
+    const body = lines.filter((l) => !header(l) && !meta(l) && hasArabic(l.text));
+    const fields = [];
+
+    const officeLine = body.find((l) => /\//.test(l.text) && /مدينه|ماموريه|اول|ثان|ثالث|رابع|قسم|مركز|كبار|متوسط/.test(l.n)) || body.find((l) => /\//.test(l.text));
+    fields.push(f("office", "المأمورية", officeLine && arabicOnly(officeLine.text.split("/")[0]), "check"));
+    const formLine = lines.find((l) => forms.test(l.n));
     fields.push(f("form", "الكيان القانوني", formLine && formName[(formLine.n.match(forms) || [])[0]], "check"));
-    const trade = body.find((l) => /[A-Za-z]{3,}/.test(l.text));
-    fields.push(f("trade", "الاسم التجاري", trade && clean(trade.text.replace(/[^ء-يA-Za-z\s]/g, " ")), "check"));
-    const owner = body.find((l) => /وشريك|وشركاه/.test(l.n)) || body[body.indexOf(trade) + 1];
-    fields.push(f("owner", "اسم الممول", owner && clean(owner.text.replace(/[^ء-ي\s]/g, " ")), "check"));
-    const act = body.find((l) => /الانشطه|نشاط/.test(l.n) && !/كود|بدء|بدع/.test(l.n));
-    fields.push(f("activity", "النشاط", act && clean(act.text.replace(/[^ء-ي\s]/g, " ")), "check"));
+
+    const act = body.find((l) => /الانشطه|انشطه|نشاط/.test(l.n));
+    // A line that is only the legal form (often printed on its own) names nobody.
+    const formOnly = (l) => forms.test(l.n) && arabicOnly(l.text).replace(forms, "").replace(/بسيطه|بسيطة/g, "").trim().length < 4;
+    const rest = body.filter((l) => l !== officeLine && l !== act && !formOnly(l) && arabicOnly(l.text).replace(/\s/g, "").length > 3);
+    const trade = rest.find((l) => realLatin(l.text).length);
+    const tradeName = trade && clean(arabicOnly(trade.text.replace(/[A-Za-z]+/g, " ")) + " " + realLatin(trade.text).join(" "));
+    fields.push(f("trade", "الاسم التجاري", tradeName, "check"));
+    const after = trade ? rest.slice(rest.indexOf(trade) + 1) : rest;
+    const owner = rest.find((l) => /وشريك|وشركاه/.test(l.n)) || after.find((l) => !/^\s*[\d٠-٩]/.test(l.text));
+    fields.push(f("owner", "اسم الممول", owner && arabicOnly(owner.text), "check"));
+    const address = after.find((l) => l !== owner && (/^\s*[\d٠-٩]/.test(l.text) || /شارع|عماره|برج|كمبوند|كومبوند|التجمع|مدينه|حي|ش /.test(l.n)));
+    fields.push(f("address", "العنوان", address && clean((address.digitText || address.text).replace(/[^ء-ي0-9٠-٩\s\-\/]/g, " ")), "check"));
+    fields.push(f("activity", "النشاط", act && arabicOnly(act.text), "check"));
+
+    // The activity code is the four-digit number on the «كود النشاط» line that is not part of a date.
     const codeLine = lines.find((l) => /كود/.test(l.n));
-    const code = codeLine && latin(codeLine.digitText || codeLine.text).match(/\b\d{4}\b/);
+    const noDates = (t) => latin(t).replace(/\d{1,4}\s*[\/\-.]\s*\d{1,2}(\s*[\/\-.]\s*\d{1,4})?/g, " ");
+    const code = codeLine && noDates(codeLine.digitText || codeLine.text).match(/(?<!\d)\d{4}(?!\d)/);
     fields.push(f("code", "كود النشاط", code?.[0], "check"));
-    const startLine = lines.find((l) => /بدء|بدع|بدا/.test(l.n)) || lines.find((l) => /النشاط/.test(l.n) && dates(l.digitText || "").length);
-    fields.push(f("start", "بدء النشاط", startLine && dates(startLine.digitText || startLine.text)[0]?.text, "check"));
-    const all = lines.flatMap((l) => dates(l.digitText || l.text).map((d) => ({ ...d, line: l }))).filter((d) => d.line !== startLine && d.d);
-    all.sort((a, b) => dateKey(a) - dateKey(b));
+    const startLine = lines.find((l) => /بدء|بدع|بدا/.test(l.n)) || lines.find((l) => /النشاط/.test(l.n) && l.d.length);
+    const start = startLine?.d[0];
+    fields.push(f("start", "بدء النشاط", start?.text, "check"));
+    const all = lines.flatMap((l) => l.d.map((d) => ({ ...d, line: l }))).filter((d) => d.d && !(d.line === startLine && d.text === start?.text));
+    all.sort((x, y) => dateKey(x) - dateKey(y));
     const exp = all[all.length - 1], issue = all.length > 1 ? all[all.length - 2] : null;
     fields.push(f("issued", "تاريخ الإصدار", issue?.text, "check"));
     fields.push(f("expiry", "تاريخ الانتهاء", exp?.text, exp && issue ? "ok" : "check"));
     const joined = latin(lines.map((l) => l.digitText || l.text).join(" "));
     const reg = joined.match(/\d{3}\s?-\s?\d{3}\s?-\s?\d{3}(?!\d)/);
-    fields.push(f("reg", "رقم التسجيل الضريبي", reg?.[0].replace(/\s/g, ""), /^\d{3}-\d{3}-\d{3}$/.test(reg?.[0].replace(/\s/g, "") || "") ? "ok" : "check"));
+    fields.push(f("reg", "رقم التسجيل الضريبي", reg?.[0].replace(/\s/g, ""), reg ? "ok" : "check"));
     const card = joined.replace(/\s/g, "").match(/\d{14,18}/);
     fields.push(f("card", "رقم الكارت", card?.[0], "check"));
     return fields;
