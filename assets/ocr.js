@@ -6,7 +6,7 @@
 
   async function getWorker(onProgress) {
     if (!worker) {
-      onProgress?.("تحميل محرك القراءة، أول مرة بس");
+      onProgress?.("تحميل محرك القراءة، في المرة الأولى فقط");
       worker = await Tesseract.createWorker(["ara", "eng"], 1);
       await worker.setParameters({ tessedit_pageseg_mode: "4", preserve_interword_spaces: "1" });
     }

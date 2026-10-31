@@ -4,8 +4,8 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const HISTORY = "doc-reader-history";
-  const STEPS = ["فتح الملف", "تحميل محرك القراءة، أول مرة بس", "تحديد اتجاه المستند", "تعديل الميل", "فصل الكتابة عن الخلفية", "قراءة النص", "قراءة الأرقام"];
-  const STATE = { ok: ["ok", "مؤكد"], check: ["check", "راجعه"], missing: ["", "مش لاقيه"] };
+  const STEPS = ["فتح الملف", "تحميل محرك القراءة، في المرة الأولى فقط", "تحديد اتجاه المستند", "تعديل الميل", "فصل الكتابة عن الخلفية", "قراءة النص", "قراءة الأرقام"];
+  const STATE = { ok: ["ok", "مؤكد"], check: ["check", "راجِعه"], missing: ["", "غير موجود"] };
   let current = null;
 
   let toastTimer;
@@ -27,7 +27,7 @@
 
   async function run(file) {
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) return toast("الملف أكبر من ٢٥ ميجا", true);
+    if (file.size > 25 * 1024 * 1024) return toast("حجم الملف أكبر من ٢٥ ميجابايت", true);
     $("#start").hidden = true; $("#result").hidden = true; $("#work").hidden = false;
     progress("فتح الملف");
     try {
@@ -37,7 +37,7 @@
       showResult();
     } catch (e) {
       console.error(e);
-      toast("ماقدرناش نقرا الملف ده. جرب صورة أوضح", true);
+      toast("تعذّرت قراءة هذا الملف. جرّب صورة أوضح", true);
       $("#start").hidden = false;
     } finally {
       $("#work").hidden = true;
@@ -62,19 +62,19 @@
     $("#result").innerHTML = `
       <div class="split">
         <section class="panel split-main">
-          <div class="row between"><h2>البيانات</h2><span class="note">${found} من ${current.fields.length} اتقروا</span></div>
+          <div class="row between"><h2>البيانات</h2><span class="note">${found} من ${current.fields.length} تمت قراءتها</span></div>
           <div class="field"><label for="rtype">نوع المستند</label><select id="rtype">${typeOpts}</select></div>
           <form class="fields" id="fields">${current.fields.map((f, i) => `
             <div class="fld ${f.state}"><div class="fld-h"><label for="f-${i}">${esc(f.label)}</label><span class="chip ${STATE[f.state][0]}">${STATE[f.state][1]}</span></div>
               <input id="f-${i}" data-i="${i}" value="${esc(f.value)}" ${/\d/.test(f.value) && !/[ء-ي]/.test(f.value) ? 'class="ltr"' : ""}></div>`).join("")}
           </form>
           <div class="row">
-            <button class="btn primary" id="save" type="button">احفظ في السجل</button>
-            <button class="btn" id="copy" type="button">انسخ البيانات</button>
-            <button class="btn" id="json" type="button">نزّل ملف بيانات</button>
-            <button class="btn" id="again" type="button">مستند تاني</button>
+            <button class="btn primary" id="save" type="button">حفظ في السجل</button>
+            <button class="btn" id="copy" type="button">نسخ البيانات</button>
+            <button class="btn" id="json" type="button">تنزيل ملف البيانات</button>
+            <button class="btn" id="again" type="button">مستند آخر</button>
           </div>
-          <p class="note">لو صححت رقم، القارئ بيتعلّم الشكل ده ويبقى أدق المرة الجاية.</p>
+          <p class="note">إذا صحّحت رقمًا، يتعلّم القارئ هذا الشكل ليصبح أدق في المرة القادمة.</p>
         </section>
         <aside class="split-side">
           <section class="panel preview">
@@ -82,9 +82,9 @@
               <div class="tabs"><button class="tab" type="button" data-mode="clean" aria-pressed="${current.mode === "clean"}">بعد التنظيف</button><button class="tab" type="button" data-mode="page" aria-pressed="${current.mode === "page"}">الأصل</button></div></div>
             ${current.pages.length > 1 ? `<div class="tabs">${current.pages.map((_, i) => `<button class="tab" type="button" data-page="${i}" aria-pressed="${i === current.view}">صفحة ${i + 1}</button>`).join("")}</div>` : ""}
             <div id="canvas-host"></div>
-            <div class="row"><button class="btn small" id="turn" type="button">لف الصورة واقرا تاني</button></div>
+            <div class="row"><button class="btn small" id="turn" type="button">تدوير الصورة وإعادة القراءة</button></div>
           </section>
-          <section class="panel"><details class="raw"><summary>اللي اتقرا سطر بسطر</summary>
+          <section class="panel"><details class="raw"><summary>النص المقروء سطرًا بسطر</summary>
             <ol>${p.lines.map((l) => `<li>${esc(l.text)}${l.digitText && l.digitText !== l.text ? `<small>بعد قراءة الأرقام: ${esc(Fields.latin(l.digitText))}</small>` : ""}</li>`).join("")}</ol></details></section>
         </aside>
       </div>`;
@@ -117,7 +117,7 @@
     try {
       current.pages[i] = await OCR.readPage(p.page, progress, 90);
       extract($("#rtype")?.value || current.type);
-    } catch (e) { console.error(e); toast("ماقدرناش نقرا الصورة بعد اللف", true); }
+    } catch (e) { console.error(e); toast("تعذّرت قراءة الصورة بعد تدويرها", true); }
     $("#work").hidden = true; showResult();
   }
 
@@ -130,13 +130,13 @@
     let learned = 0;
     current.fields.forEach((f) => { if (f.edited && f.digits) learned += DigitReader.learn(f.digits, f.value); });
     const h = readHistory(); h.unshift(record()); writeHistory(h.slice(0, 500));
-    toast(learned ? `اتحفظ، والقارئ اتعلم ${learned} شكل جديد` : "اتحفظ في السجل");
+    toast(learned ? `تم الحفظ، وتعلّم القارئ ${learned} شكلًا جديدًا` : "تم الحفظ في السجل");
   }
 
   async function copy() {
     keepEdits();
     const text = current.fields.filter((f) => f.value).map((f) => `${f.label}: ${f.value}`).join("\n");
-    try { await navigator.clipboard.writeText(text); toast("اتنسخت البيانات"); } catch { toast("ماقدرناش ننسخ", true); }
+    try { await navigator.clipboard.writeText(text); toast("تم نسخ البيانات"); } catch { toast("تعذّر النسخ", true); }
   }
 
   function saveFile(name, text, type) {
@@ -160,12 +160,12 @@
     const cols = [...new Set(h.flatMap((r) => Object.keys(r.fields)))];
     $("#result").innerHTML = `<section class="panel">
       <div class="row between"><h2>السجل</h2><div class="row">
-        ${h.length ? '<button class="btn small" id="csv" type="button">نزّل جدول</button><button class="btn small" id="clear" type="button">امسح السجل</button>' : ""}
+        ${h.length ? '<button class="btn small" id="csv" type="button">تنزيل جدول</button><button class="btn small" id="clear" type="button">مسح السجل</button>' : ""}
         <button class="btn small primary" id="back" type="button">مستند جديد</button></div></div>
-      <p class="note">السجل محفوظ على الجهاز ده بس. القارئ اتعلم ${DigitReader.learnedCount()} شكل من تصحيحاتك.</p>
+      <p class="note">السجل محفوظ على هذا الجهاز فقط. تعلّم القارئ ${DigitReader.learnedCount()} شكلًا من تصحيحاتك.</p>
       ${h.length ? `<div class="table-wrap"><table><thead><tr><th>النوع</th><th>التاريخ</th>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
         ${h.map((r) => `<tr><td>${esc(r.label)}</td><td>${new Date(r.at).toLocaleDateString("ar-EG")}</td>${cols.map((c) => `<td>${esc(r.fields[c] || "")}</td>`).join("")}</tr>`).join("")}
-      </tbody></table></div>` : '<p class="empty">مفيش مستندات محفوظة لسه.</p>'}
+      </tbody></table></div>` : '<p class="empty">لا توجد مستندات محفوظة بعد.</p>'}
     </section>`;
     $("#back").addEventListener("click", reset);
     $("#csv")?.addEventListener("click", () => {
@@ -173,7 +173,7 @@
       const rows = [["النوع", "التاريخ", ...cols].map(q).join(",")].concat(h.map((r) => [r.label, r.at.slice(0, 10), ...cols.map((c) => r.fields[c] || "")].map(q).join(",")));
       saveFile(`documents-${Date.now()}.csv`, "﻿" + rows.join("\n"), "text/csv");
     });
-    $("#clear")?.addEventListener("click", () => { if (confirm("تمسح كل السجل؟")) { writeHistory([]); showHistory(); } });
+    $("#clear")?.addEventListener("click", () => { if (confirm("هل تريد مسح السجل بالكامل؟")) { writeHistory([]); showHistory(); } });
   }
 
   // For checking a reading by hand from the browser console.

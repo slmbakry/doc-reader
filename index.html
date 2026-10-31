@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>قارئ المستندات</title>
   <meta name="theme-color" content="#0f2a44">
-  <meta name="description" content="اقرا بيانات البطاقة الشخصية والبطاقة الضريبية والسجل التجاري من صورة، على جهازك">
+  <meta name="description" content="اقرأ بيانات البطاقة الشخصية والبطاقة الضريبية والسجل التجاري من صورة، على جهازك">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%230f2a44'/><path d='M20 16h16l10 10v22H20zM36 16v10h10M26 34h14M26 41h10' stroke='%231f9d74' stroke-width='4' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,25 +23,25 @@
 
   <main class="wrap" id="app">
     <section class="head">
-      <span class="eyebrow">من صورة لبيانات جاهزة</span>
-      <h1>صوّر المستند، وإحنا نطلّع بياناته</h1>
-      <p>بطاقة الرقم القومي، والبطاقة الضريبية، والسجل التجاري. القراءة كلها بتحصل على جهازك، والصورة مش بتتبعت لأي مكان.</p>
+      <span class="eyebrow">من صورة إلى بيانات جاهزة</span>
+      <h1>صوّر المستند، ونستخرج نحن بياناته</h1>
+      <p>بطاقة الرقم القومي، والبطاقة الضريبية، والسجل التجاري. تتم القراءة كلها على جهازك، ولا تُرسل الصورة إلى أي مكان.</p>
     </section>
 
     <section class="panel" id="start">
       <label class="drop" id="drop" for="file">
         <span class="drop-ic" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/></svg></span>
-        <b>اختار صورة أو ملف</b>
-        <small>أو اسحبه هنا. الصورة الواضحة والمفرودة بتتقري أدق.</small>
+        <b>اختر صورة أو ملفًا</b>
+        <small>أو اسحبه إلى هنا. الصورة الواضحة والمستوية تُقرأ بدقة أعلى.</small>
         <input type="file" id="file" accept="image/*,application/pdf" hidden>
       </label>
       <div class="row">
-        <label class="btn" for="camera">صوّر بالموبايل</label>
+        <label class="btn" for="camera">صوّر بالهاتف</label>
         <input type="file" id="camera" accept="image/*" capture="environment" hidden>
         <div class="field inline">
           <label for="type">نوع المستند</label>
           <select id="type">
-            <option value="auto">اكتشفه لوحدك</option>
+            <option value="auto">اكتشفه تلقائيًا</option>
             <option value="id">بطاقة الرقم القومي</option>
             <option value="tax">البطاقة الضريبية</option>
             <option value="cr">السجل التجاري</option>
@@ -51,9 +51,9 @@
     </section>
 
     <section class="panel" id="work" hidden>
-      <h2>جاري القراءة</h2>
+      <h2>جارٍ القراءة</h2>
       <ol class="steps" id="steps"></ol>
-      <p class="note">أول مرة بتاخد وقت أطول عشان محرك القراءة بيتحمّل.</p>
+      <p class="note">تستغرق المرة الأولى وقتًا أطول لأن محرك القراءة يُحمَّل.</p>
     </section>
 
     <div id="result" hidden></div>
